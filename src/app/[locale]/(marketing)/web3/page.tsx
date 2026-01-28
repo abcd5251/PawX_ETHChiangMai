@@ -3,7 +3,7 @@ import SignMessage from '@/components/SignMessage';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import TransferERC20 from '@/components/TransferERC20';
 import TransferNative from '@/components/TransferNative';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import ConnectButton from '@/components/ConnectButton';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 
 type IAboutProps = {
@@ -30,7 +30,7 @@ export default async function About(props: IAboutProps) {
   return (
     <>
       <div className="sticky top-0 z-50 flex items-center justify-between bg-gray-900 p-4 text-lg font-semibold text-gray-100 [&_a:hover]:text-indigo-500 [&_a]:text-fuchsia-500">
-        <ConnectButton accountStatus="address" chainStatus="none" showBalance={false} />
+        <ConnectButton />
         <ThemeSwitcher />
       </div>
 

@@ -7,9 +7,9 @@ import { routing } from '@/libs/i18nNavigation';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import { Providers } from './providers';
 import '@/styles/global.css';
-import '@rainbow-me/rainbowkit/styles.css';
 
 export const metadata: Metadata = {
   icons: [
@@ -46,10 +46,13 @@ export default async function RootLayout(props: {
   // The `suppressHydrationWarning` attribute in <body> is used to prevent hydration errors caused by Sentry Overlay,
   // which dynamically adds a `style` attribute to the body tag.
 
+  const headersObj = await headers();
+  const cookies = headersObj.get('cookie');
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <Providers>
+        <Providers cookies={cookies}>
           <NextIntlClientProvider
             locale={locale}
             messages={messages}
