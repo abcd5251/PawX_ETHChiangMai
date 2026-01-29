@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, timestamp } from 'drizzle-orm/pg-core';
+import { integer, pgTable, serial, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // This file defines the structure of your database tables using the Drizzle ORM.
 
@@ -19,3 +19,19 @@ export const counterSchema = pgTable('counter', {
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
+
+export const userWallets = pgTable('user_wallets', {
+  id: serial('id').primaryKey(),
+  telegramUserId: text('telegram_user_id').notNull(),
+  evmAddress: text('evm_address').notNull(),
+  solAddress: text('sol_address').notNull(),
+  evmPrivateKey: text('evm_private_key').notNull(),
+  solPrivateKey: text('sol_private_key').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+}, table => ({
+  telegramUserIdIdx: uniqueIndex('user_wallets_telegram_user_id_idx').on(table.telegramUserId),
+}));

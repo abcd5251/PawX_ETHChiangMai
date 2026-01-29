@@ -40,6 +40,74 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
+    },
+    "public.user_wallets": {
+      "name": "user_wallets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "telegram_user_id": {
+          "name": "telegram_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evm_address": {
+          "name": "evm_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sol_address": {
+          "name": "sol_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evm_private_key": {
+          "name": "evm_private_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sol_private_key": {
+          "name": "sol_private_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_wallets_telegram_user_id_idx": {
+          "name": "user_wallets_telegram_user_id_idx",
+          "columns": [
+            "telegram_user_id"
+          ],
+          "unique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
     }
   },
   "enums": {},
