@@ -4,7 +4,7 @@ import { NavLink } from './NavLink';
 import { SearchInput } from './SearchInput';
 import { StatusIndicator } from './StatusIndicator';
 import { ThemeSwitcher } from './ThemeSwitcher';
-import ConnectButton from './ConnectButton';
+import { DynamicWidget } from '@dynamic-labs/sdk-react-core';
 
 export const NavBar = () => (
   <div className="sticky top-0 z-50 bg-gray-200 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-800">
@@ -44,7 +44,7 @@ export const NavBar = () => (
         <SearchInput />
         <ThemeSwitcher />
         <StatusIndicator />
-        <ConnectButton />
+        <DynamicWidget />
       </div>
     </div>
   </div>

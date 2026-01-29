@@ -4,17 +4,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { isEthereumWallet } from '@dynamic-labs/ethereum';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { isAddress, parseEther } from 'viem';
-import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 
 const TransferNative: FC = () => {
-  const { data, error, isPending, isError, sendTransaction } = useSendTransaction();
-  const { data: receipt, isLoading } = useWaitForTransactionReceipt({ hash: data });
+  const { primaryWallet } = useDynamicContext();
   const { toast } = useToast();
   const [amount, setAmount] = useState<string>('');
   const [receiver, setReceiver] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAmountChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
     setAmount(event.target.value);
@@ -24,11 +25,19 @@ const TransferNative: FC = () => {
     setReceiver(event.target.value);
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
+    if (!primaryWallet || !isEthereumWallet(primaryWallet)) {
+      toast({
+        title: 'Error:',
+        description: 'Please connect an Ethereum wallet first.',
+      });
+      return;
+    }
+
     if (receiver.length === 0 || !isAddress(receiver)) {
       toast({
         title: 'Error:',
-        description: 'The receiver address is not set!',
+        description: 'The receiver address is not set or invalid!',
       });
       return;
     }
@@ -41,29 +50,30 @@ const TransferNative: FC = () => {
       return;
     }
 
-    sendTransaction({
-      to: receiver,
-      value: parseEther(amount),
-    });
-  };
+    setIsLoading(true);
 
-  useEffect(() => {
-    if (receipt) {
+    try {
+      const client = await primaryWallet.getWalletClient();
+      const hash = await client.sendTransaction({
+        to: receiver,
+        value: parseEther(amount),
+      });
+
       toast({
         title: 'Transfer successfully sent!',
-        description: `Hash: ${receipt.transactionHash}`,
+        description: `Hash: ${hash}`,
       });
       setAmount('0');
       setReceiver('');
-    }
-
-    if (isError && error) {
+    } catch (error: any) {
       toast({
-        title: 'An error occured:',
-        description: error.message,
+        title: 'An error occurred:',
+        description: error.message || 'Unknown error',
       });
+    } finally {
+      setIsLoading(false);
     }
-  }, [receipt, isError, error, toast]);
+  };
 
   return (
     <div className="flex w-[45%] min-w-[270px] flex-col gap-2 rounded-md border border-gray-300 p-4">
@@ -80,9 +90,9 @@ const TransferNative: FC = () => {
       <Button
         variant="ghost"
         onClick={handleTransfer}
-        disabled={isLoading || isPending}
+        disabled={isLoading}
       >
-        {isLoading || isPending
+        {isLoading
           ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />

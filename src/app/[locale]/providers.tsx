@@ -2,47 +2,52 @@
 
 import type { ReactNode } from 'react';
 import { WebSocketProvider } from '@/contexts/WebSocketProvider';
-import { wagmiAdapter, projectId, networks, solanaWeb3JsAdapter } from '@/config';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { useEffect, useState } from 'react';
-import { createAppKit } from '@reown/appkit/react';
-import * as React from 'react';
-import { cookieToInitialState, WagmiProvider, type Config } from 'wagmi';
+import { 
+  DynamicContextProvider, 
+} from "@dynamic-labs/sdk-react-core";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Set up metadata
-const metadata = {
-  name: 'PawX',
-  description: 'PawX Application',
-  url: 'https://pawx.app', // Update this to your actual domain
-  icons: ['https://pawx.app/favicon.jpg'] // Update this
-}
-
-// Create the modal
-export const modal = createAppKit({
-  adapters: [wagmiAdapter, solanaWeb3JsAdapter],
-  projectId,
-  networks,
-  defaultNetwork: networks[0],
-  metadata: metadata,
-  features: {
-    analytics: true
-  }
-})
-
-export function Providers({ children, cookies }: { children: ReactNode; cookies: string | null }) {
+export function Providers({ children }: { children: ReactNode; cookies: string | null }) {
   const [mounted, setMounted] = useState(false);
+  const [queryClient] = useState(() => new QueryClient());
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const [queryClient] = useState(() => new QueryClient());
-
-  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies)
+  const environmentId = process.env.NEXT_PUBLIC_DYNAMIC_ENV_ID || "ba7db7a5-fc43-433b-98e8-6fc0ab00e312";
 
   return (
-    <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
+    <DynamicContextProvider
+      settings={{
+        environmentId,
+        walletConnectors: [EthereumWalletConnectors, SolanaWalletConnectors],
+        overrides: {
+          evmNetworks: [
+            {
+              blockExplorerUrls: ['https://bscscan.com'],
+              chainId: 56,
+              chainName: 'BNB Smart Chain',
+              iconUrls: ['https://raw.githubusercontent.com/dynamic-labs/sdk/main/packages/icons/img/networks/bnb.svg'],
+              name: 'BNB Smart Chain',
+              nativeCurrency: {
+                decimals: 18,
+                name: 'BNB',
+                symbol: 'BNB',
+              },
+              networkId: 56,
+              rpcUrls: ['https://bsc-dataseed.binance.org'],
+              vanityName: 'BSC',
+            },
+          ],
+        }
+      }}
+      theme="auto"
+    >
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
@@ -55,6 +60,6 @@ export function Providers({ children, cookies }: { children: ReactNode; cookies:
           </WebSocketProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    </WagmiProvider>
+    </DynamicContextProvider>
   );
 }
