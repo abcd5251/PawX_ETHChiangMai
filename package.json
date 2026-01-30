@@ -9,7 +9,7 @@
     "dev:spotlight": "spotlight-sidecar",
     "dev:next": "next dev",
     "dev:webhook": "node scripts/dev-telegram-webhook.mjs",
-    "dev": "node scripts/dev-telegram-webhook.mjs && run-p dev:next dev:spotlight",
+    "dev": "run-p dev:next dev:spotlight dev:webhook",
     "build": "next build",
     "start": "next start",
     "build-stats": "cross-env ANALYZE=true npm run build",

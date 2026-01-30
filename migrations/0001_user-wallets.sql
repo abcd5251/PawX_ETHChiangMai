@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS "user_wallets" (
 	"evm_private_key" text NOT NULL,
 	"sol_private_key" text NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "user_wallets_telegram_user_id_idx" UNIQUE ("telegram_user_id")
 );
-CREATE UNIQUE INDEX IF NOT EXISTS "user_wallets_telegram_user_id_idx" ON "user_wallets" ("telegram_user_id");

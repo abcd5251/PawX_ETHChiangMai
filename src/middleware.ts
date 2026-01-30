@@ -1,9 +1,9 @@
 import type { NextFetchEvent, NextRequest } from 'next/server';
-import arcjet from '@/libs/Arcjet';
 import { detectBot } from '@arcjet/next';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import createMiddleware from 'next-intl/middleware';
 import { NextResponse } from 'next/server';
+import arcjet from '@/libs/Arcjet';
 import { routing } from './libs/i18nNavigation';
 
 const intlMiddleware = createMiddleware(routing);
@@ -77,6 +77,10 @@ export default async function middleware(
 
   // Extract the URL pathname from the request
   const path = request.nextUrl.pathname;
+
+  if (path.startsWith('/api') || path.startsWith('/trpc')) {
+    return NextResponse.next();
+  }
 
   // Allow direct access to sitemap.xml and robots.txt without i18n middleware processing
   // This ensures these files are properly served for SEO purposes
