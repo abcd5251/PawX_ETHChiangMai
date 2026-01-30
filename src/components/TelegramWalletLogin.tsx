@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -28,6 +27,15 @@ export default function TelegramWalletLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const hasAutoLogin = useRef(false);
   const botUrl = 'https://t.me/pawx_trading_bot?start=login';
+  const formatAddress = (address?: string) => {
+    if (!address) {
+      return '尚未登入';
+    }
+    if (address.length <= 12) {
+      return address;
+    }
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   const performLogin = useCallback(async (payload: Record<string, any>) => {
     setIsLoading(true);
@@ -79,58 +87,61 @@ export default function TelegramWalletLogin() {
     : walletInfo?.solAddress;
 
   return (
-    <div className="flex flex-col gap-4 rounded-md border border-gray-300 p-4">
-      <div className="flex flex-col gap-3">
-        <div className="text-lg font-semibold">Telegram Login</div>
-        <Button
-          onClick={() => {
-            window.open(botUrl, '_blank');
-          }}
-          disabled={isLoading}
-        >
-          Telegram Login
-        </Button>
-        <div className="text-sm text-muted-foreground">
-          登入後回到此頁即可顯示錢包地址
+    <div className="w-full rounded-xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-gray-600 dark:bg-gray-700/80">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={selectedChain}
+            onValueChange={value => setSelectedChain(value as 'BSC' | 'SOLANA')}
+          >
+            <SelectTrigger className="h-9 w-[180px]">
+              <SelectValue placeholder="選擇 Chain" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="BSC">BSC</SelectItem>
+              <SelectItem value="SOLANA">Solana</SelectItem>
+            </SelectContent>
+          </Select>
+          {!walletInfo && (
+            <Button
+              className="h-9"
+              onClick={() => {
+                window.open(botUrl, '_blank');
+              }}
+              disabled={isLoading}
+            >
+              Telegram Login
+            </Button>
+          )}
         </div>
-      </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="text-lg font-semibold">錢包顯示</div>
-        <Select
-          value={selectedChain}
-          onValueChange={value => setSelectedChain(value as 'BSC' | 'SOLANA')}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="選擇 Chain" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="BSC">BSC</SelectItem>
-            <SelectItem value="SOLANA">Solana</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="尚未登入"
-          value={addressToShow || ''}
-          readOnly
-        />
-        <Button
-          variant="ghost"
-          disabled={!walletInfo || isLoading}
-          onClick={() => {
-            const address = addressToShow;
-            if (!address) {
-              return;
-            }
-            navigator.clipboard.writeText(address);
-            toast({
-              title: '已複製',
-              description: address,
-            });
-          }}
-        >
-          複製地址
-        </Button>
+        <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white/80 px-4 py-2 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-600 dark:text-gray-100">
+            {selectedChain}
+          </span>
+          <span className="font-medium text-gray-700 dark:text-gray-100">
+            {formatAddress(addressToShow)}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2"
+            disabled={!walletInfo || isLoading}
+            onClick={() => {
+              const address = addressToShow;
+              if (!address) {
+                return;
+              }
+              navigator.clipboard.writeText(address);
+              toast({
+                title: '已複製',
+                description: address,
+              });
+            }}
+          >
+            複製
+          </Button>
+        </div>
       </div>
     </div>
   );

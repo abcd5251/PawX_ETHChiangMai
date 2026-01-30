@@ -85,14 +85,21 @@ if (!botToken) {
 }
 
 let baseUrl = env.TELEGRAM_WEBHOOK_BASE_URL || env.NEXT_PUBLIC_APP_URL;
+const shouldAutostart = env.NGROK_AUTOSTART !== 'false';
 
-if (!baseUrl && env.NGROK_AUTOSTART === 'true') {
+if (shouldAutostart) {
   const started = await startNgrok();
   if (!started) {
-    process.stdout.write('ngrok not found. Install ngrok or set TELEGRAM_WEBHOOK_BASE_URL\n');
-    process.exit(0);
+    if (!baseUrl) {
+      process.stdout.write('ngrok not found. Install ngrok or set TELEGRAM_WEBHOOK_BASE_URL\n');
+      process.exit(0);
+    }
+  } else {
+    const ngrokUrl = await waitForNgrokUrl();
+    if (ngrokUrl) {
+      baseUrl = ngrokUrl;
+    }
   }
-  baseUrl = await waitForNgrokUrl();
 }
 
 if (!baseUrl) {
