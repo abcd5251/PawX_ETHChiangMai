@@ -9,21 +9,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/store/authStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-type WalletInfo = {
-  userId: string;
-  evmAddress: string;
-  solAddress: string;
-};
 
 export default function TelegramWalletLogin() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
-  const [selectedChain, setSelectedChain] = useState<'BSC' | 'SOLANA'>('BSC');
+  const walletInfo = useAuthStore(state => state.walletInfo);
+  const selectedChain = useAuthStore(state => state.selectedChain);
+  const setWalletInfo = useAuthStore(state => state.setWalletInfo);
+  const setSelectedChain = useAuthStore(state => state.setSelectedChain);
+  const clearWalletInfo = useAuthStore(state => state.clearWalletInfo);
   const [isLoading, setIsLoading] = useState(false);
   const hasAutoLogin = useRef(false);
   const botUrl = 'https://t.me/pawx_trading_bot?start=login';
@@ -82,9 +80,14 @@ export default function TelegramWalletLogin() {
     router.replace('/sniper');
   }, [performLogin, router, searchParams]);
 
+  useEffect(() => {
+    if (!walletInfo) {
+      hasAutoLogin.current = false;
+    }
+  }, [walletInfo]);
+
   const handleDisconnect = () => {
-    setWalletInfo(null);
-    hasAutoLogin.current = false;
+    clearWalletInfo();
     router.replace('/sniper');
     toast({
       title: 'Disconnected',
@@ -139,15 +142,15 @@ export default function TelegramWalletLogin() {
               </Button>
             </div>
           ) : (
-            <div
-              className="flex cursor-pointer items-center gap-2"
-              onClick={() => {
-                window.open(botUrl, '_blank');
-              }}
+            <a
+              href={botUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2"
             >
               <div className="size-2 rounded-full bg-red-500" />
               <span className="font-medium text-blue-600">Telegram Login</span>
-            </div>
+            </a>
           )}
         </div>
 
