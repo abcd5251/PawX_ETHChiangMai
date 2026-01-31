@@ -28,6 +28,19 @@ type TweetItem = {
   };
 };
 
+type ChainOption = 'bsc' | 'solana' | 'both';
+type SniperType = 'ca' | 'keywords' | 'both';
+
+type SniperConfig = {
+  accounts: string[];
+  chain: ChainOption;
+  type: SniperType;
+  amount: string;
+  slippage: string;
+  gasFee: string;
+  updatedAt: string;
+};
+
 const targetUsers = [
   'cz_binance',
   'heyibinance',
@@ -81,6 +94,16 @@ export default function SniperPage() {
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>(
     () => availableAccounts.map(account => account.screenName),
   );
+  const [monitorAccounts, setMonitorAccounts] = useState<string[]>(
+    () => availableAccounts.map(account => account.screenName),
+  );
+  const [sniperType, setSniperType] = useState<SniperType>('ca');
+  const [chainOption, setChainOption] = useState<ChainOption>('bsc');
+  const [snipeAmount, setSnipeAmount] = useState('1');
+  const [slippage, setSlippage] = useState('1');
+  const [gasFee, setGasFee] = useState('0.5');
+  const [activeTab, setActiveTab] = useState<'configuration' | 'saved'>('configuration');
+  const [savedConfig, setSavedConfig] = useState<SniperConfig | null>(null);
 
   const filteredTweets = useMemo(() => {
     return tweets
@@ -104,10 +127,286 @@ export default function SniperPage() {
     setSelectedAccounts([]);
   };
 
+  const handleMonitorToggle = (screenName: string) => {
+    setMonitorAccounts(prev => (
+      prev.includes(screenName)
+        ? prev.filter(item => item !== screenName)
+        : [...prev, screenName]
+    ));
+  };
+
+  const handleMonitorSelectAll = () => {
+    setMonitorAccounts(availableAccounts.map(account => account.screenName));
+  };
+
+  const handleMonitorClearAll = () => {
+    setMonitorAccounts([]);
+  };
+
+  const handleSaveMonitor = () => {
+    const nextConfig: SniperConfig = {
+      accounts: monitorAccounts,
+      chain: chainOption,
+      type: sniperType,
+      amount: snipeAmount,
+      slippage,
+      gasFee,
+      updatedAt: new Date().toISOString(),
+    };
+    setSavedConfig(nextConfig);
+    setActiveTab('saved');
+  };
+
+  const handleEditMonitor = () => {
+    if (!savedConfig) {
+      setActiveTab('configuration');
+      return;
+    }
+    setMonitorAccounts(savedConfig.accounts);
+    setChainOption(savedConfig.chain);
+    setSniperType(savedConfig.type);
+    setSnipeAmount(savedConfig.amount);
+    setSlippage(savedConfig.slippage);
+    setGasFee(savedConfig.gasFee);
+    setActiveTab('configuration');
+  };
+
   return (
     <div className="min-h-[calc(100vh-84px)] w-full bg-gray-100 dark:bg-gray-500">
       <div className="mx-auto max-w-screen-xl space-y-6 p-6">
         <TelegramWalletLogin />
+
+        <div className="rounded-2xl border border-gray-200 bg-white/90 p-6 shadow-sm dark:border-gray-600 dark:bg-gray-700/80">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex size-2.5 items-center justify-center rounded-full border-2 border-blue-500" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Sniper Monitor</h2>
+            </div>
+            <div className="flex w-full max-w-lg items-center rounded-full bg-gray-100 p-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              <button
+                type="button"
+                onClick={() => setActiveTab('configuration')}
+                className={`flex-1 rounded-full px-3 py-2 text-center transition ${activeTab === 'configuration' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'hover:text-gray-900 dark:hover:text-gray-100'}`}
+              >
+                Configuration
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('saved')}
+                className={`flex-1 rounded-full px-3 py-2 text-center transition ${activeTab === 'saved' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'hover:text-gray-900 dark:hover:text-gray-100'}`}
+              >
+                Saved
+              </button>
+            </div>
+          </div>
+
+          {activeTab === 'configuration' ? (
+            <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    <span className="text-blue-500">⚡</span>
+                    Monitor Accounts
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-300">
+                    <button type="button" className="hover:text-gray-900 dark:hover:text-gray-100" onClick={handleMonitorSelectAll}>
+                      Select All
+                    </button>
+                    <span className="h-3 w-px bg-gray-300 dark:bg-gray-600" />
+                    <button type="button" className="hover:text-gray-900 dark:hover:text-gray-100" onClick={handleMonitorClearAll}>
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {availableAccounts.map(account => (
+                    <label
+                      key={`monitor-${account.screenName}`}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition ${monitorAccounts.includes(account.screenName) ? 'border-blue-200 bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10' : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-600 dark:bg-gray-800/60'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={monitorAccounts.includes(account.screenName)}
+                        onChange={() => handleMonitorToggle(account.screenName)}
+                        className="size-4 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                      />
+                      <Image
+                        src={account.profileImageUrl || '/default-avatar.png'}
+                        alt={account.name}
+                        width={32}
+                        height={32}
+                        className="size-8 rounded-full"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{account.name}</p>
+                        <p className="truncate text-xs text-gray-500 dark:text-gray-300">@{account.screenName}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs text-gray-500 dark:text-gray-300">
+                  {monitorAccounts.length}
+                  {' '}
+                  account(s) selected
+                </p>
+              </div>
+
+              <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Sniper Type</div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { value: 'ca', label: 'CAs Only', description: 'Monitor contract addresses' },
+                    { value: 'keywords', label: 'Keywords Only', description: 'Monitor keywords' },
+                    { value: 'both', label: 'CA & Keywords', description: 'Monitor both' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSniperType(option.value as SniperType)}
+                      className={`rounded-xl border px-3 py-3 text-left text-xs transition ${sniperType === option.value ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200' : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:text-gray-300'}`}
+                    >
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{option.description}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">Chain</div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    { value: 'bsc', label: 'BSC', description: 'Monitor BSC chain' },
+                    { value: 'solana', label: 'Solana', description: 'Monitor Solana chain' },
+                    { value: 'both', label: 'BSC & Solana', description: 'Monitor both chains' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setChainOption(option.value as ChainOption)}
+                      className={`rounded-xl border px-3 py-3 text-left text-xs transition ${chainOption === option.value ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-200' : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-600 dark:text-gray-300'}`}
+                    >
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{option.description}</div>
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Snipe Amount</label>
+                  <div className="mt-2 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-100">
+                    <input
+                      value={snipeAmount}
+                      onChange={event => setSnipeAmount(event.target.value)}
+                      className="w-full bg-transparent outline-none"
+                    />
+                    <span className="text-xs font-semibold text-blue-500">USDC</span>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Slippage Tolerance</label>
+                    <div className="mt-2 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-100">
+                      <input
+                        value={slippage}
+                        onChange={event => setSlippage(event.target.value)}
+                        className="w-full bg-transparent outline-none"
+                      />
+                      <span className="text-xs text-gray-500">%</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Suggested: 0.5% - 3%</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600 dark:text-gray-300">Gas Fee Limit</label>
+                    <div className="mt-2 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-100">
+                      <input
+                        value={gasFee}
+                        onChange={event => setGasFee(event.target.value)}
+                        className="w-full bg-transparent outline-none"
+                      />
+                      <span className="text-xs text-gray-500">USDC</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">Suggested: 0.3 - 1 USDC</p>
+                  </div>
+                </div>
+              </div>
+              <div className="lg:col-span-2">
+                <Button className="w-full bg-blue-500 text-white hover:bg-blue-600" onClick={handleSaveMonitor}>
+                  Update & Save
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+              {savedConfig ? (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Active Configuration</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-300">
+                        Last updated:
+                        {' '}
+                        {new Date(savedConfig.updatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleEditMonitor}>
+                      Edit
+                    </Button>
+                  </div>
+                  <div className="grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-200 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Sniper Type</p>
+                      <p className="mt-1 font-semibold">
+                        {savedConfig.type === 'ca' ? 'CAs Only' : savedConfig.type === 'keywords' ? 'Keywords Only' : 'CA & Keywords'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Chain</p>
+                      <p className="mt-1 font-semibold">
+                        {savedConfig.chain === 'bsc' ? 'BSC' : savedConfig.chain === 'solana' ? 'Solana' : 'BSC & Solana'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Monitored Accounts</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {savedConfig.accounts.map(account => (
+                          <span key={`saved-${account}`} className="rounded-full bg-white px-3 py-1 text-xs text-gray-700 shadow-sm dark:bg-gray-800 dark:text-gray-200">
+                            @
+                            {account}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Amount</p>
+                      <p className="mt-1 text-lg font-semibold text-blue-500">
+                        {savedConfig.amount}
+                        {' '}
+                        USDC
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Slippage</p>
+                      <p className="mt-1 font-semibold">
+                        {savedConfig.slippage}
+                        %
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase text-gray-400">Gas Fee Limit</p>
+                      <p className="mt-1 font-semibold">
+                        {savedConfig.gasFee}
+                        {' '}
+                        USDC
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white/70 p-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
+                  No saved configuration yet. Create one in Configuration.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white/90 shadow-sm dark:border-gray-600 dark:bg-gray-700/80">
           <header className="sticky top-0 z-10 border-b border-gray-200 bg-white/95 px-6 py-4 backdrop-blur dark:border-gray-600 dark:bg-gray-800/80">
