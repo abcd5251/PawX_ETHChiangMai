@@ -57,7 +57,8 @@
     "./out/**/*",
     "./node_modules/**/*",
     "**/*.spec.ts",
-    "**/*.e2e.ts"
+    "**/*.e2e.ts",
+    "websocket.ts"
   ],
   "include": [
     "next-env.d.ts",

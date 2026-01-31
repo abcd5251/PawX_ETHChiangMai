@@ -54,3 +54,6 @@ local
 
 # vercel
 .vercel
+
+# local data
+tweets.json
