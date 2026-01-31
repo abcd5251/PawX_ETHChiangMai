@@ -41,7 +41,7 @@ export const POST = async (request: Request) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: user_id,
-          text: `登入成功\nBSC 地址: ${w.evmAddress}\nSolana 地址: ${w.solAddress}`,
+          text: `Login Successful\nBSC Address: ${w.evmAddress}\nSolana Address: ${w.solAddress}`,
         }),
       }).catch(() => {});
 
@@ -79,7 +79,7 @@ export const POST = async (request: Request) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: user_id,
-        text: `登入成功\nBSC 地址: ${evmAddress}\nSolana 地址: ${solAddress}`,
+        text: `Login Successful\nBSC Address: ${evmAddress}\nSolana Address: ${solAddress}`,
       }),
     }).catch(() => {});
 

@@ -29,7 +29,7 @@ export default function TelegramWalletLogin() {
   const botUrl = 'https://t.me/pawx_trading_bot?start=login';
   const formatAddress = (address?: string) => {
     if (!address) {
-      return '尚未登入';
+      return 'Not logged in';
     }
     if (address.length <= 12) {
       return address;
@@ -47,7 +47,7 @@ export default function TelegramWalletLogin() {
       });
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData?.error || '登入失敗');
+        throw new Error(errorData?.error || 'Login failed');
       }
       const data = await response.json();
       setWalletInfo({
@@ -56,13 +56,13 @@ export default function TelegramWalletLogin() {
         solAddress: data.solAddress,
       });
       toast({
-        title: '登入成功',
-        description: '已建立 BSC 與 Solana 錢包',
+        title: 'Login Successful',
+        description: 'BSC and Solana wallets created',
       });
     } catch (error: any) {
       toast({
-        title: '登入失敗',
-        description: error?.message || '未知錯誤',
+        title: 'Login Failed',
+        description: error?.message || 'Unknown error',
       });
     } finally {
       setIsLoading(false);
@@ -82,6 +82,16 @@ export default function TelegramWalletLogin() {
     router.replace('/sniper');
   }, [performLogin, router, searchParams]);
 
+  const handleDisconnect = () => {
+    setWalletInfo(null);
+    hasAutoLogin.current = false;
+    router.replace('/sniper');
+    toast({
+      title: 'Disconnected',
+      description: 'Wallet disconnected',
+    });
+  };
+
   const addressToShow = selectedChain === 'BSC'
     ? walletInfo?.evmAddress
     : walletInfo?.solAddress;
@@ -89,58 +99,88 @@ export default function TelegramWalletLogin() {
   return (
     <div className="w-full rounded-xl border border-gray-200 bg-white/90 p-5 shadow-sm dark:border-gray-600 dark:bg-gray-700/80">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-[220px] items-center">
+          {walletInfo ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white/80 px-4 py-2 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+                <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-600 dark:text-gray-100">
+                  {selectedChain}
+                </span>
+                <span className="font-medium text-gray-700 dark:text-gray-100">
+                  {formatAddress(addressToShow)}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  disabled={!walletInfo || isLoading}
+                  onClick={() => {
+                    const address = addressToShow;
+                    if (!address) {
+                      return;
+                    }
+                    navigator.clipboard.writeText(address);
+                    toast({
+                      title: 'Copied',
+                      description: address,
+                    });
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-9 px-3"
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="flex cursor-pointer items-center gap-2"
+              onClick={() => {
+                window.open(botUrl, '_blank');
+              }}
+            >
+              <div className="size-2 rounded-full bg-red-500" />
+              <span className="font-medium text-blue-600">Telegram Login</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
           <Select
             value={selectedChain}
             onValueChange={value => setSelectedChain(value as 'BSC' | 'SOLANA')}
           >
-            <SelectTrigger className="h-9 w-[180px]">
-              <SelectValue placeholder="選擇 Chain" />
+            <SelectTrigger className="h-10 w-[180px]">
+              <SelectValue placeholder="Select Chain" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="BSC">BSC</SelectItem>
               <SelectItem value="SOLANA">Solana</SelectItem>
             </SelectContent>
           </Select>
-          {!walletInfo && (
-            <Button
-              className="h-9"
-              onClick={() => {
-                window.open(botUrl, '_blank');
-              }}
-              disabled={isLoading}
-            >
-              Telegram Login
-            </Button>
-          )}
         </div>
+      </div>
 
-        <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white/80 px-4 py-2 text-sm shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
-          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-600 dark:text-gray-100">
-            {selectedChain}
+      <div className="mt-5 grid gap-4 rounded-xl border border-gray-200 bg-white/80 p-4 text-sm text-gray-700 shadow-sm dark:border-gray-600 dark:bg-gray-800/60 dark:text-gray-100">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+            Chain
           </span>
-          <span className="font-medium text-gray-700 dark:text-gray-100">
-            {formatAddress(addressToShow)}
+          <span className="font-semibold">{selectedChain}</span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-300">
+            Wallet Address
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2"
-            disabled={!walletInfo || isLoading}
-            onClick={() => {
-              const address = addressToShow;
-              if (!address) {
-                return;
-              }
-              navigator.clipboard.writeText(address);
-              toast({
-                title: '已複製',
-                description: address,
-              });
-            }}
-          >
-            複製
-          </Button>
+          <span className="break-all font-medium text-right">
+            {addressToShow || 'Not logged in'}
+          </span>
         </div>
       </div>
     </div>
