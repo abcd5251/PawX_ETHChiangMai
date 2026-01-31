@@ -20,7 +20,7 @@
     "allowUnreachableCode": false,
     "noFallthroughCasesInSwitch": true,
 
-    "target": "es2017",
+    "target": "es2022",
     "outDir": "out",
     "sourceMap": true,
 

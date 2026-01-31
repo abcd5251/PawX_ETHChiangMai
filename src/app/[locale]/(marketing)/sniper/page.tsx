@@ -2,10 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import TelegramWalletLogin from '@/components/TelegramWalletLogin';
+import { useAuthStore } from '@/store/authStore';
 import tweetsData from '../../../../../tweets.json';
 import { BarChart2, Bookmark, Heart, MessageCircle, Quote, Repeat2 } from 'lucide-react';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type TweetItem = {
   user: {
@@ -39,6 +40,15 @@ type SniperConfig = {
   slippage: string;
   gasFee: string;
   updatedAt: string;
+};
+
+type Transaction = {
+  hash: string;
+  chain: 'bsc' | 'solana';
+  amount: string;
+  timestamp: string;
+  account: string;
+  tweetText: string;
 };
 
 const targetUsers = [
@@ -102,8 +112,31 @@ export default function SniperPage() {
   const [snipeAmount, setSnipeAmount] = useState('1');
   const [slippage, setSlippage] = useState('1');
   const [gasFee, setGasFee] = useState('0.5');
-  const [activeTab, setActiveTab] = useState<'configuration' | 'saved'>('configuration');
+  const [activeTab, setActiveTab] = useState<'configuration' | 'saved' | 'transactions'>('configuration');
   const [savedConfig, setSavedConfig] = useState<SniperConfig | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isSniping, setIsSniping] = useState(false);
+  const processedTweetKeys = useRef<Set<string>>(new Set());
+  const walletInfo = useAuthStore(state => state.walletInfo);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('sniper-transactions');
+    if (!stored) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored) as Transaction[];
+      if (Array.isArray(parsed)) {
+        setTransactions(parsed);
+      }
+    } catch {
+      setTransactions([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sniper-transactions', JSON.stringify(transactions));
+  }, [transactions]);
 
   const filteredTweets = useMemo(() => {
     return tweets
@@ -171,6 +204,96 @@ export default function SniperPage() {
     setActiveTab('configuration');
   };
 
+  const getExplorerUrl = (chain: Transaction['chain'], hash: string) => {
+    if (chain === 'bsc') {
+      return `https://bscscan.com/tx/${hash}`;
+    }
+    return `https://solscan.io/tx/${hash}`;
+  };
+
+  const formatHash = (hash: string) => {
+    if (hash.length <= 12) {
+      return hash;
+    }
+    return `${hash.slice(0, 6)}...${hash.slice(-4)}`;
+  };
+
+  useEffect(() => {
+    if (!savedConfig) {
+      return;
+    }
+    processedTweetKeys.current = new Set();
+  }, [savedConfig?.updatedAt]);
+
+  useEffect(() => {
+    if (!savedConfig || !walletInfo?.userId) {
+      return;
+    }
+    const cutoff = new Date(savedConfig.updatedAt).getTime();
+    const targetTweets = tweets
+      .filter(tweet => savedConfig.accounts.includes(tweet.user.screenName))
+      .filter(tweet => Number.isFinite(new Date(tweet.dates.createdAt).getTime()) && new Date(tweet.dates.createdAt).getTime() >= cutoff)
+      .sort((a, b) => new Date(a.dates.createdAt).getTime() - new Date(b.dates.createdAt).getTime());
+
+    if (targetTweets.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      setIsSniping(true);
+      for (const tweet of targetTweets) {
+        if (cancelled) {
+          return;
+        }
+        const key = `${tweet.user.screenName}-${tweet.dates.createdAt}-${tweet.text}`;
+        if (processedTweetKeys.current.has(key)) {
+          continue;
+        }
+        processedTweetKeys.current.add(key);
+        const response = await fetch('/api/sniper/auto-trade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: tweet.text,
+            amount: savedConfig.amount,
+            config: savedConfig,
+            userId: walletInfo.userId,
+          }),
+        });
+        if (!response.ok) {
+          continue;
+        }
+        const data = await response.json();
+        if (!Array.isArray(data?.trades) || data.trades.length === 0) {
+          continue;
+        }
+        setTransactions(prev => [
+          ...data.trades.map((trade: { hash: string; chain: Transaction['chain'] }) => ({
+            hash: trade.hash,
+            chain: trade.chain,
+            amount: savedConfig.amount,
+            timestamp: new Date().toISOString(),
+            account: tweet.user.screenName,
+            tweetText: tweet.text,
+          })),
+          ...prev,
+        ]);
+      }
+      if (!cancelled) {
+        setIsSniping(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+      setIsSniping(false);
+    };
+  }, [savedConfig, tweets, walletInfo?.userId]);
+
   return (
     <div className="min-h-[calc(100vh-84px)] w-full bg-gray-100 dark:bg-gray-500">
       <div className="mx-auto max-w-screen-xl space-y-6 p-6">
@@ -196,6 +319,13 @@ export default function SniperPage() {
                 className={`flex-1 rounded-full px-3 py-2 text-center transition ${activeTab === 'saved' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'hover:text-gray-900 dark:hover:text-gray-100'}`}
               >
                 Saved
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('transactions')}
+                className={`flex-1 rounded-full px-3 py-2 text-center transition ${activeTab === 'transactions' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100' : 'hover:text-gray-900 dark:hover:text-gray-100'}`}
+              >
+                Transactions
               </button>
             </div>
           </div>
@@ -333,7 +463,7 @@ export default function SniperPage() {
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'saved' ? (
             <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
               {savedConfig ? (
                 <div className="space-y-4">
@@ -349,6 +479,17 @@ export default function SniperPage() {
                     <Button variant="outline" size="sm" onClick={handleEditMonitor}>
                       Edit
                     </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-300">
+                    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${isSniping ? 'bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-200' : 'bg-gray-100 text-gray-500 dark:bg-gray-700/60 dark:text-gray-300'}`}>
+                      <span className={`inline-flex size-2 rounded-full ${isSniping ? 'bg-blue-500' : 'bg-gray-400'}`} />
+                      {isSniping ? 'Sniping active' : 'Sniping idle'}
+                    </span>
+                    <span>
+                      {savedConfig.accounts.length}
+                      {' '}
+                      account(s) monitored
+                    </span>
                   </div>
                   <div className="grid gap-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-200 sm:grid-cols-2">
                     <div>
@@ -402,6 +543,53 @@ export default function SniperPage() {
               ) : (
                 <div className="rounded-xl border border-dashed border-gray-300 bg-white/70 p-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
                   No saved configuration yet. Create one in Configuration.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-600 dark:bg-gray-800/60">
+              {transactions.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-gray-300 bg-white/70 p-10 text-center text-sm text-gray-500 dark:border-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
+                  No transactions yet. Successful snipes will appear here.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {transactions.map((txn, index) => (
+                    <div key={`${txn.hash}-${index}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900/40 dark:text-gray-200">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${txn.chain === 'bsc' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200' : 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-200'}`}>
+                            {txn.chain === 'bsc' ? 'BSC' : 'Solana'}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-300">
+                            {new Date(txn.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                          @
+                          {txn.account}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                          {txn.amount}
+                          {' '}
+                          USDC
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <a
+                          href={getExplorerUrl(txn.chain, txn.hash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-blue-600 hover:underline dark:text-blue-300"
+                        >
+                          {formatHash(txn.hash)}
+                        </a>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {txn.tweetText}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

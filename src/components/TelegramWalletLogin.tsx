@@ -48,8 +48,9 @@ export default function TelegramWalletLogin() {
         throw new Error(errorData?.error || 'Login failed');
       }
       const data = await response.json();
+      const resolvedUserId = String(payload.user_id ?? payload.id ?? data.userId ?? data.id ?? '');
       setWalletInfo({
-        userId: String(data.id || payload.id || payload.user_id),
+        userId: resolvedUserId,
         evmAddress: data.evmAddress,
         solAddress: data.solAddress,
       });
